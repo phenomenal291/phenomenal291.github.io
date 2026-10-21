@@ -1,5 +1,5 @@
 ---
-title: "Being alone by myself"
+title: "the Art of Being Alone"
 date: 2026-09-09
 description: "Random thought on a random day"
 ---

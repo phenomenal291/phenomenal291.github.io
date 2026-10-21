@@ -15,8 +15,18 @@ defaults:
 
 exclude:
   - manage.py
+  - manage.bat
+  - build.py
   - build.rb
-  - goodreads_library_export.csv
+  - gui.py
+  - gui.bat
+  - gui.vbs
+  - gui_app/
+  - package_app.py
+  - create_shortcut.ps1
+  - requirements.txt
+  - dist/
+  - build/
   - README.md
   - LICENSE
   - vendor/

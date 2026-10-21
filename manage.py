@@ -16,6 +16,13 @@ try:
 except ImportError:
     yaml = None
 
+if sys.platform == "win32":
+    try:
+        sys.stdout.reconfigure(encoding="utf-8")
+        sys.stderr.reconfigure(encoding="utf-8")
+    except Exception:
+        pass
+
 POSTS_DIR = "_posts"
 BOOKS_FILE = "_data/books.yml"
 SITE_DIR = "_site"
@@ -24,7 +31,12 @@ def clear_screen():
     os.system("clear" if os.name != "nt" else "cls")
 
 def get_editor():
-    return os.environ.get("EDITOR", "nvim" if shutil.which("nvim") else ("vim" if shutil.which("vim") else "nano"))
+    if "EDITOR" in os.environ:
+        return os.environ["EDITOR"]
+    for editor in ["nvim", "code", "vim", "notepad", "nano"]:
+        if shutil.which(editor):
+            return editor
+    return "notepad" if os.name == "nt" else "nano"
 
 def slugify(title):
     slug = title.lower()
@@ -121,8 +133,16 @@ def save_books(books):
 # ----------------- BUILD & PREVIEW -----------------
 
 def build_site():
-    print("[*] Building site into _site/ ...")
-    if os.path.exists("build.rb") and shutil.which("ruby"):
+    if os.path.exists("build.py"):
+        try:
+            import build as py_build
+            return py_build.build()
+        except Exception as e:
+            print(f"[!] Running build.py via subprocess: {e}")
+            res = subprocess.run([sys.executable, "build.py"])
+            return res.returncode == 0
+    elif os.path.exists("build.rb") and shutil.which("ruby"):
+        print("[*] Building site into _site/ via ruby build.rb ...")
         res = subprocess.run(["ruby", "build.rb"])
         if res.returncode == 0:
             return True
@@ -130,7 +150,7 @@ def build_site():
             print("[!] ruby build.rb failed, check output above.")
             return False
     else:
-        print("[!] ruby is required to run build.rb locally.")
+        print("[!] No builder available (requires build.py or ruby build.rb).")
         return False
 
 def preview_site(port=8080):
@@ -214,10 +234,10 @@ def finalize_post(filepath):
             new_filepath = os.path.join(POSTS_DIR, expected_filename)
             if not os.path.exists(new_filepath):
                 os.rename(filepath, new_filepath)
-                print(f"[✓] Renamed file to: {expected_filename}")
+                print(f"[OK] Renamed file to: {expected_filename}")
                 filepath = new_filepath
 
-    print(f"[✓] Finalized post: '{current_title}'")
+    print(f"[OK] Finalized post: '{current_title}'")
     build_site()
     return filepath
 
@@ -270,7 +290,7 @@ def cli_create_post(title=None):
     with open(filepath, "w", encoding="utf-8") as f:
         f.write("\n".join(front_matter))
 
-    print(f"[✓] Created {filepath}")
+    print(f"[OK] Created {filepath}")
     print(f"[*] Opening {get_editor()}... Write your blog, then save & exit.\n")
     subprocess.run([get_editor(), filepath])
 
@@ -322,7 +342,7 @@ def cli_delete_post():
         confirm = input(f"Are you sure you want to delete '{target['title']}'? [y/N]: ").strip().lower()
         if confirm == "y":
             os.remove(target['filepath'])
-            print(f"[✓] Deleted {target['filename']}")
+            print(f"[OK] Deleted {target['filename']}")
             build_site()
     else:
         print("Invalid choice.")
@@ -418,7 +438,7 @@ def cli_add_book():
     books = load_books()
     books.insert(0, entry)
     save_books(books)
-    print(f"\n[✓] Added '{title}' to reading log!")
+    print(f"\n[OK] Added '{title}' to reading log!")
     build_site()
 
 def cli_edit_book():
@@ -452,7 +472,7 @@ def cli_edit_book():
         book['notes'] = new_notes
 
     save_books(books)
-    print("[✓] Book updated successfully.")
+    print("[OK] Book updated successfully.")
     build_site()
 
 def cli_delete_book():
@@ -475,7 +495,7 @@ def cli_delete_book():
     if confirm == "y":
         books.pop(idx)
         save_books(books)
-        print("[✓] Removed from reading log.")
+        print("[OK] Removed from reading log.")
         build_site()
 
 def books_menu():
@@ -511,7 +531,7 @@ def git_quick_push():
     push = input("Push to origin main? [Y/n]: ").strip().lower()
     if push in ("", "y", "yes"):
         subprocess.run(["git", "push"])
-        print("[✓] Pushed to GitHub!")
+        print("[OK] Pushed to GitHub!")
 
 # ----------------- MAIN ENTRYPOINT -----------------
 
@@ -544,10 +564,14 @@ def main():
         elif cmd == "push":
             git_quick_push()
             return
+        elif cmd in ("gui", "app"):
+            subprocess.run([sys.executable, "gui.py"])
+            return
         elif cmd in ("--help", "-h"):
             print("Usage: python3 manage.py [command]")
             print("Commands:")
             print("  (no args)      Open interactive Terminal CLI")
+            print("  gui            Launch Portfolio Management App GUI")
             print("  post [title]   Create a new blog post (write first, title later)")
             print("  book           Log a new book to _data/books.yml")
             print("  finalize       Finalize / rename post metadata from markdown")
@@ -568,6 +592,7 @@ def main():
         print("  [3] Build Site (_site/)")
         print("  [4] Preview Site Locally (http://localhost:8080)")
         print("  [5] Git Quick Push (Commit & Push changes)")
+        print("  [6] Launch Management App GUI")
         print("  [q] Quit")
         print("=" * 60)
         choice = input("Select an option: ").strip().lower()
@@ -581,6 +606,8 @@ def main():
             preview_site()
         elif choice == "5":
             git_quick_push()
+        elif choice == "6":
+            subprocess.run([sys.executable, "gui.py"])
         elif choice in ("q", "quit", "exit"):
             print("Goodbye!\n")
             break

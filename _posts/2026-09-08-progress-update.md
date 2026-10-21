@@ -1,5 +1,5 @@
 ---
-title: "Struggling to adapt"
+title: "Progress Update"
 date: 2026-09-08
 description: "Just little mental complaint and my project"
 ---

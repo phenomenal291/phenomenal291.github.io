@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="utf-8">
+  <title>Portfolio Manager - Duong Tan Phuc</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="icon" href="/favicon.ico">
+  <!-- Astryx Typography: Figtree & System Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="codemirror.min.css">
+  <link rel="stylesheet" href="codemirror_dialog.min.css">
+  <link rel="stylesheet" href="app.css">
+  <script src="marked.min.js"></script>
+  <script src="codemirror.min.js"></script>
+  <script src="codemirror_dialog.min.js"></script>
+  <script src="codemirror_searchcursor.min.js"></script>
+  <script src="codemirror_markdown.min.js"></script>
+  <script src="codemirror_vim.min.js"></script>
+</head>
+<body>
+
+  <!-- TOP HEADER / NAV -->
+  <header class="app-header">
+    <div class="brand">
+      <span class="brand-title">Duong Tan Phuc</span>
+      <span class="brand-sub">/ Site Manager</span>
+    </div>
+
+    <!-- STATUS INDICATORS -->
+    <div class="header-status">
+      <div id="status-build" class="status-badge ready">
+        <span class="dot"></span> site: ready
+      </div>
+      <div id="status-preview" class="status-badge stopped">
+        <span class="dot"></span> preview: stopped
+      </div>
+      <div id="status-git" class="status-badge git">
+        <span class="dot"></span> git: main
+      </div>
+    </div>
+
+    <!-- QUICK ACTIONS -->
+    <div class="header-actions">
+      <button id="btn-quick-build" class="btn btn-sm btn-secondary" title="Rebuild static site">🔨 Build</button>
+      <button id="btn-quick-preview" class="btn btn-sm btn-secondary" title="Start/View local preview">👁 Preview</button>
+      <button id="btn-quick-push" class="btn btn-sm btn-primary" title="Commit & push to GitHub">🚀 Push</button>
+      <button id="btn-theme-toggle" class="btn btn-sm btn-icon" title="Toggle Light/Dark Theme">🌓</button>
+    </div>
+  </header>
+
+  <!-- NAVIGATION TABS -->
+  <nav class="app-nav">
+    <div class="nav-tabs-wrapper">
+      <button class="nav-tab active" data-tab="tab-blog">
+        <span class="tab-icon">📝</span> Blog Posts (<span id="count-posts">0</span>)
+      </button>
+      <button class="nav-tab" data-tab="tab-books">
+        <span class="tab-icon">📚</span> Reading Log (<span id="count-books">0</span>)
+      </button>
+      <button class="nav-tab" data-tab="tab-preview">
+        <span class="tab-icon">🖥️</span> Build & Preview
+      </button>
+      <button class="nav-tab" data-tab="tab-git">
+        <span class="tab-icon">🐙</span> Git & Deploy
+      </button>
+    </div>
+  </nav>
+
+  <!-- MAIN CONTAINER -->
+  <main class="app-main">
+
+    <!-- ================= TAB: BLOG ================= -->
+    <section id="tab-blog" class="tab-panel active">
+      <div class="blog-layout">
+        <!-- POSTS SIDEBAR LIST -->
+        <aside class="posts-sidebar">
+          <div class="sidebar-header">
+            <div class="search-input-wrap">
+              <span class="search-icon">🔍</span>
+              <input type="text" id="post-search" placeholder="Search posts..." class="input-search">
+            </div>
+            <button id="btn-new-post" class="btn btn-primary btn-sm">+ New Post</button>
+          </div>
+          <div id="posts-list" class="posts-list">
+            <div class="loading-state">Loading posts...</div>
+          </div>
+        </aside>
+
+        <!-- POST EDITOR -->
+        <section class="post-editor-container">
+          <div class="editor-header">
+            <div class="editor-title-wrap">
+              <span id="editor-mode-label" class="editor-mode">NEW POST</span>
+              <span id="current-filename" class="editor-filename">untitled.md</span>
+            </div>
+            <div class="editor-actions">
+              <button id="btn-copy-markdown" class="btn btn-sm btn-secondary" title="Copy markdown to clipboard">
+                📋 Copy
+              </button>
+              <button id="btn-delete-post" class="btn btn-sm btn-danger" style="display:none;" title="Delete this post">
+                Delete
+              </button>
+              <button id="btn-save-post" class="btn btn-sm btn-primary" title="Save post & rebuild site (:w or Ctrl+S)">
+                💾 Save & Build
+              </button>
+            </div>
+          </div>
+
+          <!-- METADATA FORM -->
+          <div class="metadata-grid">
+            <div class="form-group form-title">
+              <label>Title</label>
+              <input type="text" id="post-title" placeholder="Post title..." class="input-text">
+            </div>
+            <div class="form-group form-date">
+              <label>Date</label>
+              <input type="date" id="post-date" class="input-text">
+            </div>
+            <div class="form-group form-desc">
+              <label>Description (Short excerpt)</label>
+              <input type="text" id="post-desc" placeholder="Brief summary for archive..." class="input-text">
+            </div>
+            <div class="form-group form-tags">
+              <label>Tags (comma separated)</label>
+              <input type="text" id="post-tags" placeholder="e.g. system, linux, c++" class="input-text">
+            </div>
+          </div>
+
+          <!-- SPLIT EDITOR -->
+          <div class="split-editor" id="split-editor-wrap">
+            <div class="editor-pane" id="pane-editor">
+              <div class="pane-header">
+                <div class="pane-title-group">
+                  <span>Markdown Source (Neovim)</span>
+                  <span id="vim-mode-display" class="vim-status-indicator">NORMAL</span>
+                </div>
+                <span class="shortcut-tip">:w or Ctrl+S to save</span>
+              </div>
+              <textarea id="post-markdown" placeholder="Write your thoughts here using Markdown..." spellcheck="false"></textarea>
+            </div>
+            <div class="preview-pane" id="pane-preview">
+              <div class="pane-header">
+                <span>Rendered Preview</span>
+                <span class="preview-badge">Live</span>
+              </div>
+              <div id="post-preview-render" class="preview-body post-body"></div>
+            </div>
+          </div>
+        </section>
+      </div>
+    </section>
+
+    <!-- ================= TAB: BOOKS ================= -->
+    <section id="tab-books" class="tab-panel">
+      <div class="books-container">
+        <!-- Top Stats & Filter Toolbar -->
+        <div class="books-top-card">
+          <div class="books-stats-pills">
+            <div class="stat-pill">
+              <span class="stat-label">Currently Reading</span>
+              <span class="stat-value" id="stat-reading">0</span>
+            </div>
+            <div class="stat-pill">
+              <span class="stat-label">Finished Books</span>
+              <span class="stat-value" id="stat-finished">0</span>
+            </div>
+          </div>
+
+          <div class="books-controls">
+            <div class="search-input-wrap">
+              <span class="search-icon">🔍</span>
+              <input type="text" id="book-search" placeholder="Filter by title, author, genre..." class="input-search">
+            </div>
+            <div class="segmented-control" id="book-status-control">
+              <button class="seg-btn active" data-status="ALL">All</button>
+              <button class="seg-btn" data-status="Reading">Reading</button>
+              <button class="seg-btn" data-status="Read">Finished</button>
+            </div>
+            <button id="btn-add-book" class="btn btn-primary btn-sm">+ Log Book</button>
+          </div>
+        </div>
+
+        <div id="books-grid" class="books-grid">
+          <div class="loading-state">Loading reading log...</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ================= TAB: PREVIEW & BUILD ================= -->
+    <section id="tab-preview" class="tab-panel">
+      <div class="preview-dashboard">
+        <div class="preview-controls-bar">
+          <div class="server-control-group">
+            <span class="control-label">Local Server</span>
+            <span id="preview-server-status" class="server-status-pill stopped">Stopped</span>
+            <span id="preview-url-display" class="server-url">http://localhost:8080</span>
+            <button id="btn-toggle-server" class="btn btn-sm btn-primary">Start Preview Server</button>
+            <button id="btn-open-browser" class="btn btn-sm btn-secondary" style="display:none;">Open in Browser ↗</button>
+          </div>
+          <div class="build-control-group">
+            <button id="btn-run-build" class="btn btn-sm btn-secondary">🔨 Rebuild Site Now</button>
+          </div>
+        </div>
+
+        <!-- EMBEDDED PREVIEW FRAME -->
+        <div class="preview-frame-wrapper">
+          <div class="frame-bar">
+            <div class="frame-dots"><span></span><span></span><span></span></div>
+            <span id="frame-address" class="frame-address">http://localhost:8080</span>
+            <button id="btn-refresh-frame" class="btn btn-xs btn-secondary">↻ Reload</button>
+          </div>
+          <iframe id="preview-iframe" src="about:blank" class="preview-iframe"></iframe>
+          <div id="preview-placeholder" class="preview-placeholder">
+            <div class="placeholder-icon">🖥️</div>
+            <h3>Local Preview is Offline</h3>
+            <p>Click "Start Preview Server" above to launch the site preview at http://localhost:8080</p>
+            <button id="btn-start-preview-direct" class="btn btn-primary">Start Server</button>
+          </div>
+        </div>
+
+        <!-- LOG CONSOLE -->
+        <div class="log-console-wrap">
+          <div class="console-header">Activity & Build Log</div>
+          <pre id="build-console" class="build-console">Ready.</pre>
+        </div>
+      </div>
+    </section>
+
+    <!-- ================= TAB: GIT & DEPLOY ================= -->
+    <section id="tab-git" class="tab-panel">
+      <div class="git-dashboard">
+        <div class="git-grid">
+          <!-- CHANGES PANEL -->
+          <div class="git-panel">
+            <div class="panel-header">
+              <span>Working Tree Changes</span>
+              <span id="git-dirty-badge" class="badge-clean">Clean</span>
+            </div>
+            <div id="git-changes-list" class="git-changes-list">
+              <p class="text-muted">No pending changes.</p>
+            </div>
+
+            <!-- COMMIT & PUSH FORM -->
+            <div class="git-commit-box">
+              <label>Commit Message</label>
+              <input type="text" id="git-commit-msg" placeholder="e.g. docs: update reading log & blog" class="input-text">
+              <button id="btn-do-push" class="btn btn-primary" style="margin-top: 12px; width: 100%;">
+                🚀 Commit & Push to GitHub Pages
+              </button>
+            </div>
+          </div>
+
+          <!-- RECENT COMMITS & LOG -->
+          <div class="git-panel">
+            <div class="panel-header">Recent Commits</div>
+            <ul id="git-recent-commits" class="recent-commits-list">
+              <li class="loading-state">Loading commits...</li>
+            </ul>
+
+            <div class="panel-header" style="margin-top: 20px;">Deployment Output</div>
+            <pre id="git-console" class="git-console">Git operations output will appear here...</pre>
+          </div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- ================= BOOK MODAL ================= -->
+  <div id="book-modal" class="modal-overlay">
+    <div class="modal-card">
+      <div class="modal-header">
+        <span id="modal-book-title" class="modal-heading">Add Book</span>
+        <button id="btn-close-book-modal" class="btn-close">✕</button>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" id="book-edit-index" value="">
+        <div class="form-group">
+          <label>Title *</label>
+          <input type="text" id="modal-book-name" class="input-text" placeholder="e.g. The Three-Body Problem">
+        </div>
+        <div class="form-group">
+          <label>Author *</label>
+          <input type="text" id="modal-book-author" class="input-text" placeholder="e.g. Liu Cixin">
+        </div>
+        <div class="form-row">
+          <div class="form-group" style="flex: 1;">
+            <label>Genre</label>
+            <input type="text" id="modal-book-genre" class="input-text" placeholder="e.g. Sci-Fi, Mystery">
+          </div>
+          <div class="form-group" style="flex: 1;">
+            <label>Status</label>
+            <select id="modal-book-status" class="select-filter">
+              <option value="Reading">Currently Reading</option>
+              <option value="Read">Finished</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group" style="flex: 1;">
+            <label>Rating</label>
+            <input type="text" id="modal-book-rating" class="input-text" placeholder="e.g. 5/5, 4.5/5, or leave blank">
+          </div>
+          <div class="form-group" style="flex: 1;">
+            <label>Year Read</label>
+            <input type="number" id="modal-book-year" class="input-text" value="2026">
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Comments / Reflections / Review</label>
+          <textarea id="modal-book-notes" rows="4" class="input-textarea" placeholder="Your personal thoughts on this book..."></textarea>
+        </div>
+        <div class="form-group">
+          <label>Memorable Quote (optional)</label>
+          <input type="text" id="modal-book-quote" class="input-text" placeholder="A quote that stayed with you...">
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button id="btn-cancel-book" class="btn btn-secondary">Cancel</button>
+        <button id="btn-save-book-submit" class="btn btn-primary">Save Book</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="toast" class="toast"></div>
+
+  <script src="app.js"></script>
+</body>
+</html>
