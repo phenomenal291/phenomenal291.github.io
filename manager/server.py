@@ -460,7 +460,11 @@ def git_push():
     try:
         safe_run_cmd(["git", "add", "."], cwd=ROOT_DIR, check=True)
         commit_res = safe_run_cmd(["git", "commit", "-m", msg], cwd=ROOT_DIR, capture_output=True, text=True)
-        push_res = safe_run_cmd(["git", "push"], cwd=ROOT_DIR, capture_output=True, text=True)
+        push_res = safe_run_cmd(["git", "push", "origin", "main"], cwd=ROOT_DIR, capture_output=True, text=True)
+        if push_res.returncode != 0:
+            pull_res = safe_run_cmd(["git", "pull", "--rebase", "--autostash", "origin", "main"], cwd=ROOT_DIR, capture_output=True, text=True)
+            if pull_res.returncode == 0:
+                push_res = safe_run_cmd(["git", "push", "origin", "main"], cwd=ROOT_DIR, capture_output=True, text=True)
         if push_res.returncode == 0:
             return jsonify({
                 "success": True,
