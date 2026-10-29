@@ -14,17 +14,7 @@ defaults:
       permalink: /blog/:title/
 
 exclude:
-  - manage.py
-  - manage.bat
-  - build.py
-  - build.rb
-  - gui.py
-  - gui.bat
-  - gui.vbs
-  - gui_app/
-  - package_app.py
-  - create_shortcut.ps1
-  - requirements.txt
+  - manager/
   - dist/
   - build/
   - README.md

@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-gui.py - Desktop Application GUI Launcher for Duong Tan Phuc's Portfolio Manager.
+manager/gui.py - Desktop Application GUI Launcher for Duong Tan Phuc's Portfolio Manager.
 Runs a native desktop window using Windows WebView2 (via pywebview), with graceful
 fallback to local browser dashboard.
 """
@@ -11,12 +11,17 @@ import threading
 import time
 import webbrowser
 
-# Add current dir to path
-ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
-if ROOT_DIR not in sys.path:
-    sys.path.insert(0, ROOT_DIR)
+# Add manager & repo root dirs to path
+MANAGER_DIR = os.path.dirname(os.path.abspath(__file__))
+ROOT_DIR = os.path.dirname(MANAGER_DIR)
+for p in (ROOT_DIR, MANAGER_DIR):
+    if p not in sys.path:
+        sys.path.insert(0, p)
 
-from gui_app.server import app, ROOT_DIR as APP_ROOT
+try:
+    from manager.server import app, ROOT_DIR as APP_ROOT
+except ImportError:
+    from server import app, ROOT_DIR as APP_ROOT
 
 PORT = 5050
 HOST = "127.0.0.1"

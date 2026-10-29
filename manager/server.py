@@ -1,5 +1,5 @@
 """
-gui_app/server.py - Flask backend server for Portfolio Management GUI.
+manager/server.py - Flask backend server for Portfolio Management GUI.
 Provides RESTful APIs for Posts, Books, Site Building, Preview Server, and Git Deployments.
 """
 
@@ -40,16 +40,23 @@ def resolve_root_dir():
     if os.path.exists(os.path.join(os.getcwd(), "_posts")):
         return os.path.abspath(os.getcwd())
     if getattr(sys, "frozen", False):
-        exe_dir = os.path.dirname(os.path.abspath(sys.executable))
-        if os.path.exists(os.path.join(exe_dir, "_posts")):
-            return exe_dir
+        cur = os.path.dirname(os.path.abspath(sys.executable))
+        for _ in range(4):
+            if os.path.exists(os.path.join(cur, "_posts")):
+                return cur
+            cur = os.path.dirname(cur)
     return os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 ROOT_DIR = resolve_root_dir()
-if ROOT_DIR not in sys.path:
-    sys.path.insert(0, ROOT_DIR)
+MANAGER_DIR = os.path.dirname(os.path.abspath(__file__))
+for p in (ROOT_DIR, MANAGER_DIR):
+    if p not in sys.path:
+        sys.path.insert(0, p)
 
-import build as site_builder
+try:
+    from manager import builder as site_builder
+except ImportError:
+    import builder as site_builder
 
 POSTS_DIR = os.path.join(ROOT_DIR, "_posts")
 BOOKS_FILE = os.path.join(ROOT_DIR, "_data", "books.yml")
@@ -58,9 +65,9 @@ INDEX_FILE = os.path.join(ROOT_DIR, "index.html")
 
 # Resolve static directory for bundled vs normal Python execution
 if getattr(sys, "frozen", False) and hasattr(sys, "_MEIPASS"):
-    static_dir = os.path.join(sys._MEIPASS, "gui_app", "static")
+    static_dir = os.path.join(sys._MEIPASS, "manager", "static")
 else:
-    static_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "static")
+    static_dir = os.path.join(MANAGER_DIR, "static")
 
 app = Flask(__name__, static_folder=static_dir)
 
@@ -96,14 +103,6 @@ def parse_post_full(filepath):
                         meta[k.strip().lower()] = v.strip().strip('"').strip("'")
     return meta, body
 
-def get_editor_cmd():
-    if "EDITOR" in os.environ:
-        return os.environ["EDITOR"]
-    for ed in ["nvim", "code", "vim", "notepad"]:
-        if shutil.which(ed):
-            return ed
-    return "notepad" if os.name == "nt" else "nano"
-
 def load_books_data():
     if not os.path.exists(BOOKS_FILE):
         return []
@@ -130,7 +129,7 @@ def favicon():
     png_path = os.path.join(ROOT_DIR, "assets", "images", "1311.png")
     if os.path.exists(png_path):
         return send_from_directory(os.path.join(ROOT_DIR, "assets", "images"), "1311.png")
-    return send_from_directory(app.static_folder, "marked.min.js")
+    return ("", 204)
 
 @app.route("/<path:path>")
 def static_files(path):
@@ -297,27 +296,6 @@ def delete_post(filename):
             print(f"[!] Build error on post delete: {e}")
         return jsonify({"success": True})
     return jsonify({"error": "Post not found"}), 404
-
-@app.route("/api/posts/<filename>/open-editor", methods=["POST"])
-def open_in_editor(filename):
-    fp = os.path.join(POSTS_DIR, filename)
-    if not os.path.exists(fp):
-        return jsonify({"error": "File not found"}), 404
-    editor = get_editor_cmd()
-    try:
-        if os.name == "nt" and editor.lower() == "code":
-            safe_popen_cmd(["cmd.exe", "/c", "code", fp], cwd=ROOT_DIR)
-        elif os.name == "nt" and editor.lower() == "notepad":
-            safe_popen_cmd(["notepad.exe", fp], cwd=ROOT_DIR)
-        else:
-            # Neovim or terminal editor
-            if os.name == "nt":
-                subprocess.Popen(["cmd.exe", "/c", "start", editor, fp], cwd=ROOT_DIR)
-            else:
-                subprocess.Popen([editor, fp], cwd=ROOT_DIR)
-        return jsonify({"success": True, "editor": editor})
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
 
 # ----------------- BOOKS API -----------------
 

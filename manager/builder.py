@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 """
-build.py - Native Python static site builder for Duong Tan Phuc's Portfolio & Blog.
-Replaces build.rb on Windows and non-Ruby environments with zero external Ruby dependency.
+manager/builder.py - Native Python static site builder for Duong Tan Phuc's Portfolio & Blog.
 """
 
 import os
@@ -20,7 +19,20 @@ if sys.platform == "win32":
     except Exception:
         pass
 
-ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
+def resolve_root_dir():
+    if "PORTFOLIO_ROOT" in os.environ and os.path.exists(os.environ["PORTFOLIO_ROOT"]):
+        return os.path.abspath(os.environ["PORTFOLIO_ROOT"])
+    if os.path.exists(os.path.join(os.getcwd(), "_posts")):
+        return os.path.abspath(os.getcwd())
+    if getattr(sys, "frozen", False):
+        cur = os.path.dirname(os.path.abspath(sys.executable))
+        for _ in range(4):
+            if os.path.exists(os.path.join(cur, "_posts")):
+                return cur
+            cur = os.path.dirname(cur)
+    return os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+ROOT_DIR = resolve_root_dir()
 SITE_DIR = os.path.join(ROOT_DIR, "_site")
 
 def get_liquid_env():
